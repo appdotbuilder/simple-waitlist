@@ -1,3 +1,7 @@
+import { db } from '../db';
+import { waitlistEntriesTable } from '../db/schema';
+import { count, desc } from 'drizzle-orm';
+
 export interface WaitlistStats {
     totalEntries: number;
     latestEntries: Array<{
@@ -8,15 +12,28 @@ export interface WaitlistStats {
     }>;
 }
 
-export async function getWaitlistStats(): Promise<WaitlistStats> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is to provide basic statistics about the waitlist:
-    // 1. Count total number of entries
-    // 2. Fetch recent entries (e.g., last 10)
-    // 3. Return aggregated stats for monitoring purposes
-    
-    return Promise.resolve({
-        totalEntries: 0,
-        latestEntries: []
-    });
-}
+export const getWaitlistStats = async (): Promise<WaitlistStats> => {
+  try {
+    // Get total count of entries
+    const totalResult = await db.select({ count: count() })
+      .from(waitlistEntriesTable)
+      .execute();
+
+    const totalEntries = totalResult[0].count;
+
+    // Get latest 10 entries, ordered by creation date descending
+    const latestEntries = await db.select()
+      .from(waitlistEntriesTable)
+      .orderBy(desc(waitlistEntriesTable.created_at))
+      .limit(10)
+      .execute();
+
+    return {
+      totalEntries,
+      latestEntries
+    };
+  } catch (error) {
+    console.error('Failed to fetch waitlist stats:', error);
+    throw error;
+  }
+};
